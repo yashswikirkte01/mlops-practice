@@ -1,0 +1,37 @@
+name: Model Evaluation CI
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  evaluate-model:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Evaluation Image
+        run: docker build -t paddy-eval:latest .
+
+      - name: Run Containerized Evaluation
+        run: |
+          mkdir -p output
+          docker run --rm \
+            -v ${{ github.workspace }}/data:/app/data \
+            -v ${{ github.workspace }}/models:/app/models \
+            -v ${{ github.workspace }}/output:/app/output \
+            -e DATA_PATH=/app/data \
+            -e MODEL_PATH=/app/models/best_paddy_model.keras \
+            -e OUTPUT_PATH=/app/output \
+            paddy-eval:latest
+
+      - name: Archive Run Metrics
+        uses: actions/upload-artifact@v4
+        with:
+          name: paddy-evaluation-metrics
+          path: output/metrics.json
